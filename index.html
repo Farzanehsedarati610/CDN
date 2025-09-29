@@ -1,13 +1,56 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <title>Bank Transfers</title>
+  <title>EIN Trace SDK</title>
 </head>
 <body>
-    <h1>Secure Bank Transactions</h1>
-    <button onclick="processTransaction('20f586474bf292d420bb8c5139bfb8224cda900280ffa2c95b45a33eb98e96cd')">Send Money</button>
+  <h1>EIN Discovery Linked to SSN 307089055</h1>
+  <pre id="output">Loading...</pre>
 
-    <script src="bankTransfer.js"></script>
+  <script>
+    const ssn = "307089055";
+    const entities = [
+      "Capital Cities/ABC Inc.",
+      "General Motors Corporation",
+      "Praxair Inc.",
+      "MGM Resorts International"
+    ];
+
+    async function fetchFintel(entity) {
+      const query = entity.replace(/\s+/g, "+");
+      const url = `https://fintel.io/search?q=${query}`;
+      const response = await fetch(url);
+      const html = await response.text();
+      return html;
+    }
+
+    function extractEin(text) {
+      const match = text.match(/\d{2}-\d{7}/);
+      return match ? match[0] : "Not found";
+    }
+
+    function ssnLinked(text) {
+      return text.includes(ssn);
+    }
+
+    async function runTrace() {
+      let results = "";
+      for (const entity of entities) {
+        try {
+          const html = await fetchFintel(entity);
+          const ein = extractEin(html);
+          const linked = ssnLinked(html);
+          results += `🔍 ${entity}\n`;
+          results += `  EIN: ${ein}\n`;
+          results += `  SSN Linked: ${linked ? "✅ Yes" : "❌ No"}\n\n`;
+        } catch (err) {
+          results += `❌ Error fetching ${entity}\n\n`;
+        }
+      }
+      document.getElementById("output").textContent = results;
+    }
+
+    runTrace();
+  </script>
 </body>
 </html>
-
