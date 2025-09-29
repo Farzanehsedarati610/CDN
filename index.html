@@ -6,31 +6,27 @@
 <body>
   <h1>EIN Discovery Linked to SSN 307089055</h1>
   <pre id="output">Loading...</pre>
-<script>
-  
-</script>async function fetchTopInvestors(page = 1) {
-  const url = `https://fintel.io/ih?page=${page}`;
-  const response = await fetch(url);
-  const html = await response.text();
-  const matches = [...html.matchAll(/\/ih\/([a-z0-9\-]+)\/[^"]+">([^<]+)</gi)];
-  return matches.map(m => m[2].trim());
-}
-  </script>
+
   <script>
     const ssn = "307089055";
-    const entities = [
-      "Capital Cities/ABC Inc.",
-      "General Motors Corporation",
-      "Praxair Inc.",
-      "MGM Resorts International"
-    ];
+    const maxPages = 3; // You can increase this to crawl deeper
+    const delay = ms => new Promise(res => setTimeout(res, ms));
 
-    async function fetchFintel(entity) {
-      const query = entity.replace(/\s+/g, "+");
-      const url = `https://fintel.io/search?q=${query}`;
+    async function fetchTopInvestors(page) {
+      const url = `https://fintel.io/ih?page=${page}`;
       const response = await fetch(url);
       const html = await response.text();
-      return html;
+      const matches = [...html.matchAll(/\/ih\/([a-z0-9\-]+)\/[^"]+">([^<]+)</gi)];
+      return matches.map(m => ({
+        slug: m[1],
+        name: m[2].trim()
+      }));
+    }
+
+    async function fetchFiling(slug) {
+      const url = `https://fintel.io/so/${slug}`;
+      const response = await fetch(url);
+      return await response.text();
     }
 
     function extractEin(text) {
@@ -44,16 +40,20 @@
 
     async function runTrace() {
       let results = "";
-      for (const entity of entities) {
-        try {
-          const html = await fetchFintel(entity);
-          const ein = extractEin(html);
-          const linked = ssnLinked(html);
-          results += `🔍 ${entity}\n`;
-          results += `  EIN: ${ein}\n`;
-          results += `  SSN Linked: ${linked ? "✅ Yes" : "❌ No"}\n\n`;
-        } catch (err) {
-          results += `❌ Error fetching ${entity}\n\n`;
+      for (let page = 1; page <= maxPages; page++) {
+        const entities = await fetchTopInvestors(page);
+        for (const entity of entities) {
+          try {
+            const filingHtml = await fetchFiling(entity.slug);
+            const ein = extractEin(filingHtml);
+            const linked = ssnLinked(filingHtml);
+            results += `🔍 ${entity.name}\n`;
+            results += `  EIN: ${ein}\n`;
+            results += `  SSN Linked: ${linked ? "✅ Yes" : "❌ No"}\n\n`;
+            await delay(1000); // throttle to avoid rate limits
+          } catch (err) {
+            results += `❌ Error fetching ${entity.name}\n\n`;
+          }
         }
       }
       document.getElementById("output").textContent = results;
