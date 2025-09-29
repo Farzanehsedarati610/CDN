@@ -6,7 +6,16 @@
 <body>
   <h1>EIN Discovery Linked to SSN 307089055</h1>
   <pre id="output">Loading...</pre>
-
+<script>
+  
+</script>async function fetchTopInvestors(page = 1) {
+  const url = `https://fintel.io/ih?page=${page}`;
+  const response = await fetch(url);
+  const html = await response.text();
+  const matches = [...html.matchAll(/\/ih\/([a-z0-9\-]+)\/[^"]+">([^<]+)</gi)];
+  return matches.map(m => m[2].trim());
+}
+  </script>
   <script>
     const ssn = "307089055";
     const entities = [
